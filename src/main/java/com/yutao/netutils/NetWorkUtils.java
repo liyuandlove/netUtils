@@ -1,5 +1,6 @@
 package com.yutao.netutils;
 
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
@@ -24,6 +25,10 @@ public class NetWorkUtils {
     private ConnectivityManager connectivityManager;
     private OnNetworkChangeListener onNetworkChangeListener;
     private Handler mHandler;
+    /**
+     * 网络变化的监听器，因为在android低版本的时候找不到NetworkCallback类，所以只能用Object
+     */
+    private Object networkCallback;
 
     private NetWorkUtils(Context mContext){
         this.mContext = mContext.getApplicationContext();
@@ -57,12 +62,60 @@ public class NetWorkUtils {
         if (mContext==null)
             return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            networkCallback = new ConnectivityManager.NetworkCallback(){
+                @Override
+                public void onAvailable(Network network) {
+                    super.onAvailable(network);
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (onNetworkChangeListener!=null){
+                                onNetworkChangeListener.onChange(isNetConnection(),isWifi(),isMob(),getNetExtraInfo());
+                            }
+                        }
+                    });
+                }
+
+                @Override
+                public void onCapabilitiesChanged(Network network, NetworkCapabilities networkCapabilities) {
+                    super.onCapabilitiesChanged(network, networkCapabilities);
+                }
+
+                @Override
+                public void onLinkPropertiesChanged(Network network, LinkProperties linkProperties) {
+                    super.onLinkPropertiesChanged(network, linkProperties);
+                }
+
+                @Override
+                public void onLosing(Network network, int maxMsToLive) {
+                    super.onLosing(network, maxMsToLive);
+                }
+
+                @Override
+                public void onLost(Network network) {
+                    super.onLost(network);
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (onNetworkChangeListener!=null){
+                                onNetworkChangeListener.onChange(isNetConnection(),isWifi(),isMob(),getNetExtraInfo());
+                            }
+                        }
+                    });
+                }
+
+                @Override
+                public void onUnavailable() {
+                    super.onUnavailable();
+                }
+            };
+
             if (!isNetConnection()){
                 if (onNetworkChangeListener!=null){
                     onNetworkChangeListener.onChange(isNetConnection(),isWifi(),isMob(),getNetExtraInfo());
                 }
             }
-            connectivityManager.registerDefaultNetworkCallback(networkCallback);
+            connectivityManager.registerDefaultNetworkCallback((ConnectivityManager.NetworkCallback) networkCallback);
         }else {
             IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
@@ -78,8 +131,8 @@ public class NetWorkUtils {
     public void unRegisterNetChangeReceiver(){
         if (mContext==null)
             return;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            connectivityManager.unregisterNetworkCallback(networkCallback);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            connectivityManager.unregisterNetworkCallback((ConnectivityManager.NetworkCallback) networkCallback);
         }else{
             mContext.unregisterReceiver(networkChangedReceiver);
         }
@@ -152,55 +205,5 @@ public class NetWorkUtils {
         return onNetworkChangeListener;
     }
 
-    /**
-     * 网络变化的监听器
-     */
-    private ConnectivityManager.NetworkCallback networkCallback = new ConnectivityManager.NetworkCallback(){
-        @Override
-        public void onAvailable(Network network) {
-            super.onAvailable(network);
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (onNetworkChangeListener!=null){
-                        onNetworkChangeListener.onChange(isNetConnection(),isWifi(),isMob(),getNetExtraInfo());
-                    }
-                }
-            });
-        }
-
-        @Override
-        public void onCapabilitiesChanged(Network network, NetworkCapabilities networkCapabilities) {
-            super.onCapabilitiesChanged(network, networkCapabilities);
-        }
-
-        @Override
-        public void onLinkPropertiesChanged(Network network, LinkProperties linkProperties) {
-            super.onLinkPropertiesChanged(network, linkProperties);
-        }
-
-        @Override
-        public void onLosing(Network network, int maxMsToLive) {
-            super.onLosing(network, maxMsToLive);
-        }
-
-        @Override
-        public void onLost(Network network) {
-            super.onLost(network);
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (onNetworkChangeListener!=null){
-                        onNetworkChangeListener.onChange(isNetConnection(),isWifi(),isMob(),getNetExtraInfo());
-                    }
-                }
-            });
-        }
-
-        @Override
-        public void onUnavailable() {
-            super.onUnavailable();
-        }
-    };
-
 }
+
