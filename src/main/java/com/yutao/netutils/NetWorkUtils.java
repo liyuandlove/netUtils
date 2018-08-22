@@ -8,6 +8,8 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -21,10 +23,12 @@ public class NetWorkUtils {
     private boolean isWifi,isMob,isConnect;
     private ConnectivityManager connectivityManager;
     private OnNetworkChangeListener onNetworkChangeListener;
+    private Handler mHandler;
 
     private NetWorkUtils(Context mContext){
         this.mContext = mContext.getApplicationContext();
         connectivityManager = (ConnectivityManager) this.mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        mHandler = new Handler(Looper.getMainLooper());
     }
 
     public synchronized static NetWorkUtils getInstance(Context mContext) {
@@ -155,9 +159,14 @@ public class NetWorkUtils {
         @Override
         public void onAvailable(Network network) {
             super.onAvailable(network);
-            if (onNetworkChangeListener!=null){
-                onNetworkChangeListener.onChange(isNetConnection(),isWifi(),isMob(),getNetExtraInfo());
-            }
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (onNetworkChangeListener!=null){
+                        onNetworkChangeListener.onChange(isNetConnection(),isWifi(),isMob(),getNetExtraInfo());
+                    }
+                }
+            });
         }
 
         @Override
@@ -178,9 +187,14 @@ public class NetWorkUtils {
         @Override
         public void onLost(Network network) {
             super.onLost(network);
-            if (onNetworkChangeListener!=null){
-                onNetworkChangeListener.onChange(isNetConnection(),isWifi(),isMob(),getNetExtraInfo());
-            }
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (onNetworkChangeListener!=null){
+                        onNetworkChangeListener.onChange(isNetConnection(),isWifi(),isMob(),getNetExtraInfo());
+                    }
+                }
+            });
         }
 
         @Override
